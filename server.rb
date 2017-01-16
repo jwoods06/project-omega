@@ -1,10 +1,10 @@
-require 'sinatra'
- 
-set :bind, '0.0.0.0'
-set :port, 5000
- 
-set :logging, true
- 
-get '/' do
-  'Hello World!'
+require 'webrick'
+
+server = WEBrick::HTTPServer.new :Port => 5000
+
+#The following proc is used to customize the server operations
+server.mount_proc '/' do |request, response|
+  response.body = 'Hello, world!'
 end
+
+server.start
