@@ -32,13 +32,9 @@ stages:
         echo "$KUBE_CA_PEM" > "$(pwd)/kube.ca.pem"
         export KUBE_CLUSTER_OPTIONS=--certificate-authority="$(pwd)/kube.ca.pem"
       fi
-      kubectl config set-cluster gitlab-deploy --server="$KUBE_URL" \
-        $KUBE_CLUSTER_OPTIONS
-      kubectl config set-credentials gitlab-deploy --token="$KUBE_TOKEN" \
-        $KUBE_CLUSTER_OPTIONS
-      kubectl config set-context gitlab-deploy \
-        --cluster=gitlab-deploy --user=gitlab-deploy \
-        --namespace="$KUBE_NAMESPACE"
+      kubectl config set-cluster gitlab-deploy --server="$KUBE_URL" $KUBE_CLUSTER_OPTIONS
+      kubectl config set-credentials gitlab-deploy --token="$KUBE_TOKEN" $KUBE_CLUSTER_OPTIONS
+      kubectl config set-context gitlab-deploy --cluster=gitlab-deploy --user=gitlab-deploy --namespace="$KUBE_NAMESPACE"
       kubectl config use-context gitlab-deploy
       echo ""
     }
