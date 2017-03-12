@@ -12,6 +12,7 @@ stages:
   - review
   - staging
   - production
+  - cleanup
 
 # Define some helper functions
 .common: &common
@@ -143,116 +144,12 @@ stages:
 
 .auto_deploy: &auto_deploy
   |
-    if [[ -z "$CI_ENVIRONMENT_URL" ]]; then
-      echo "Reading CI_ENVIRONMENT_URL from .gitlab-ci.yml..."
-      CI_ENVIRONMENT_URL="$(ruby -ryaml -e 'puts YAML.load_file(".gitlab-ci.yml")[ENV["CI_BUILD_NAME"]]["environment"]["url"]')"
-      CI_ENVIRONMENT_URL="$(eval echo "$CI_ENVIRONMENT_URL")"
-      echo "CI_ENVIRONMENT_URL: $CI_ENVIRONMENT_URL"
-    fi
-
-    ensure_deploy_variables
-    create_kubeconfig
-
     CI_ENVIRONMENT_HOSTNAME="${CI_ENVIRONMENT_URL}"
     CI_ENVIRONMENT_HOSTNAME="${CI_ENVIRONMENT_HOSTNAME/http:\/\//}"
     CI_ENVIRONMENT_HOSTNAME="${CI_ENVIRONMENT_HOSTNAME/https:\/\//}"
 
-    cat <<EOF | kubectl apply -f -
-    kind: Namespace
-    apiVersion: v1
-    metadata:
-      name: $KUBE_NAMESPACE
-    EOF
-
-    cat <<EOF | kubectl apply -n $KUBE_NAMESPACE -f -
-    apiVersion: extensions/v1beta1
-    kind: Deployment
-    metadata:
-      name: $CI_ENVIRONMENT_SLUG
-      namespace: $KUBE_NAMESPACE
-      labels:
-        app: $CI_ENVIRONMENT_SLUG
-        pipeline_id: "$CI_PIPELINE_ID"
-        build_id: "$CI_BUILD_ID"
-    spec:
-      replicas: 1
-      template:
-        metadata:
-          labels:
-            name: $CI_ENVIRONMENT_SLUG
-            app: $CI_ENVIRONMENT_SLUG
-        spec:
-          containers:
-          - name: app
-            image: $CI_REGISTRY_IMAGE:$CI_REGISTRY_TAG
-            imagePullPolicy: Always
-            env:
-            - name: CI_PIPELINE_ID
-              value: "$CI_PIPELINE_ID"
-            - name: CI_BUILD_ID
-              value: "$CI_BUILD_ID"
-            ports:
-            - name: web
-              containerPort: 5000
-            livenessProbe:
-              httpGet:
-                path: /
-                port: 5000
-              initialDelaySeconds: 15
-              timeoutSeconds: 15
-            readinessProbe:
-              httpGet:
-                path: /
-                port: 5000
-              initialDelaySeconds: 5
-              timeoutSeconds: 3
-    ---
-    apiVersion: v1
-    kind: Service
-    metadata:
-      name: $CI_ENVIRONMENT_SLUG
-      namespace: $KUBE_NAMESPACE
-      labels:
-        app: $CI_ENVIRONMENT_SLUG
-        pipeline_id: "$CI_PIPELINE_ID"
-        build_id: "$CI_BUILD_ID"
-    spec:
-      ports:
-        - name: web
-          port: 5000
-          targetPort: web
-      selector:
-        name: $CI_ENVIRONMENT_SLUG
-    ---
-    apiVersion: extensions/v1beta1
-    kind: Ingress
-    metadata:
-      name: $CI_ENVIRONMENT_SLUG
-      namespace: $KUBE_NAMESPACE
-      labels:
-        app: $CI_ENVIRONMENT_SLUG
-        pipeline_id: "$CI_PIPELINE_ID"
-        build_id: "$CI_BUILD_ID"
-      annotations:
-        kubernetes.io/tls-acme: "true"
-        kubernetes.io/ingress.class: "nginx"
-    spec:
-      tls:
-      - hosts:
-        - $CI_ENVIRONMENT_HOSTNAME
-        secretName: ${CI_ENVIRONMENT_SLUG}-tls
-      rules:
-      - host: $CI_ENVIRONMENT_HOSTNAME
-        http:
-          paths:
-          - path: /
-            backend:
-              serviceName: $CI_ENVIRONMENT_SLUG
-              servicePort: 5000
-    EOF
-
     echo "Waiting for deployment..."
-    kubectl rollout status -n "$KUBE_NAMESPACE" -w "deployment/$CI_ENVIRONMENT_SLUG"
+    helm install --wait --name $CI_PROJECT_NAME-$CI_PROJECT_ID-$CI_ENVIRONMENT_SLUG --namespace $KUBE_NAMESPACE --set ciEnvironmentSlug=$CI_ENVIRONMENT_SLUG,ciPipelineID=$CI_PIPELINE_ID,ciBuildID=$CI_BUILD_ID,ciEnvironmentHostname=$CI_ENVIRONMENT_HOSTNAME,ciRegistryImage=$CI_REGISTRY_IMAGE,ciRegistryTag=$CI_REGISTRY_TAG
 
     echo "Application is accessible at: ${CI_ENVIRONMENT_URL}"
     echo ""
@@ -261,9 +158,8 @@ stages:
   |
     create_kubeconfig
 
-    echo "Removing all pods..."
-    kubectl delete all -l "app=$CI_ENVIRONMENT_SLUG" -n "$KUBE_NAMESPACE"
-
+    echo "Removing app..."
+    helm delete $CI_PROJECT_NAME-$CI_PROJECT_ID-$CI_ENVIRONMENT_SLUG
 
 before_script:
   - *common
@@ -304,6 +200,14 @@ review:
   stage: review
   variables:
     CI_ENVIRONMENT_URL: http://$CI_PROJECT_NAME-$CI_ENVIRONMENT_SLUG.$KUBE_DOMAIN
+  before_script:
+    - *common
+    - apk update && apk add curl bash openssl sudo
+    - curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash
+    - ensure_deploy_variables
+    - create_kubeconfig
+    - helm init
+    - helm repo add gitlab https://charts.gitlab.io
   script:
     - *auto_deploy
   environment:
@@ -316,9 +220,16 @@ review:
     - master
 
 stop_review:
-  stage: review
+  stage: cleanup
   variables:
     GIT_STRATEGY: none
+  before_script:
+    - *common
+    - apk update && apk add curl bash openssl sudo
+    - curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash
+    - ensure_deploy_variables
+    - create_kubeconfig
+    - helm init --client-only
   script:
     - *auto_destroy
   environment:
