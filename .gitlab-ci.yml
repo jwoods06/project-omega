@@ -149,7 +149,7 @@ stages:
     CI_ENVIRONMENT_HOSTNAME="${CI_ENVIRONMENT_HOSTNAME/https:\/\//}"
 
     echo "Waiting for deployment..."
-    helm install --wait --name $CI_PROJECT_NAME-$CI_PROJECT_ID-$CI_ENVIRONMENT_SLUG --namespace $KUBE_NAMESPACE --set ciEnvironmentSlug=$CI_ENVIRONMENT_SLUG,ciPipelineID=$CI_PIPELINE_ID,ciBuildID=$CI_BUILD_ID,ciEnvironmentHostname=$CI_ENVIRONMENT_HOSTNAME,ciRegistryImage=$CI_REGISTRY_IMAGE,ciRegistryTag=$CI_REGISTRY_TAG gitlab/auto-deploy-app
+    helm install --wait --name $CI_PROJECT_NAME-$CI_PROJECT_ID-$CI_ENVIRONMENT_SLUG --namespace $KUBE_NAMESPACE --set ciEnvironmentSlug=$CI_ENVIRONMENT_SLUG,ciPipelineID=\\"$CI_PIPELINE_ID\\",ciBuildID=\\"$CI_BUILD_ID\\",ciEnvironmentHostname=$CI_ENVIRONMENT_HOSTNAME,ciRegistryImage=$CI_REGISTRY_IMAGE,ciRegistryTag=$CI_REGISTRY_TAG gitlab/auto-deploy-app
 
     echo "Application is accessible at: ${CI_ENVIRONMENT_URL}"
     echo ""
@@ -206,7 +206,7 @@ review:
     - curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash
     - ensure_deploy_variables
     - create_kubeconfig
-    - helm init
+    - helm init --upgrade
     - helm repo add gitlab https://charts.gitlab.io
   script:
     - *auto_deploy
