@@ -148,6 +148,8 @@ stages:
     CI_ENVIRONMENT_HOSTNAME="${CI_ENVIRONMENT_HOSTNAME/http:\/\//}"
     CI_ENVIRONMENT_HOSTNAME="${CI_ENVIRONMENT_HOSTNAME/https:\/\//}"
 
+    echo ciEnvironmentSlug=$CI_ENVIRONMENT_SLUG,ciPipelineID=\\"$CI_PIPELINE_ID\\",ciBuildID=\\"$CI_BUILD_ID\\",ciEnvironmentHostname=$CI_ENVIRONMENT_HOSTNAME,ciRegistryImage=$CI_REGISTRY_IMAGE,ciRegistryTag=$CI_REGISTRY_TAG
+    
     helm status $CI_PROJECT_NAME-$CI_PROJECT_ID-$CI_ENVIRONMENT_SLUG
     if [[ $? -ne 0 ]]; then
       echo "Creating initial release"
