@@ -4,7 +4,7 @@ server = WEBrick::HTTPServer.new :Port => 5000
 
 #The following proc is used to customize the server operations
 server.mount_proc '/' do |request, response|
-  response.body = 'Happy New Year!!'
+  response.body = 'Hello World!'
 end
 
 server.start
