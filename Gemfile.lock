@@ -1,0 +1,22 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    builder (2.0.0)
+    curb (0.8.6)
+    net-ldap (0.5.1)
+    rubyzip (1.2.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  builder (= 2.0.0)
+  curb (= 0.8.6)
+  net-ldap (= 0.5.1)
+  rubyzip (= 1.2.0)
+
+RUBY VERSION
+   ruby 2.4.2p198
+
+BUNDLED WITH
+   1.16.1
