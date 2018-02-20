@@ -83,3 +83,15 @@ stop_review:
     - branches
   except:
     - master
+    
+sast:
+  image: registry.gitlab.com/gitlab-org/gl-sast:latest
+  variables:
+    POSTGRES_DB: "false"
+  allow_failure: true
+  script:
+    - sast .
+  artifacts:
+    paths: [gl-sast-report.json]
+
+
